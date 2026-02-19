@@ -7,6 +7,20 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      window.addEventListener('error', function(event) {
+        const root = document.getElementById('root');
+        if (root && root.innerHTML === '') {
+          const errorDiv = document.createElement('div');
+          errorDiv.style.color = 'red';
+          errorDiv.style.padding = '20px';
+          errorDiv.style.background = 'black';
+          errorDiv.style.height = '100vh';
+          errorDiv.innerHTML = '<h1>Global Error</h1><pre>' + event.message + '\n' + event.filename + ':' + event.lineno + '</pre>';
+          document.body.appendChild(errorDiv);
+        }
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
