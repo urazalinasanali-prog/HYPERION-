@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import Papa from 'papaparse';
 import { motion } from 'motion/react';
 import { Monitor, Cpu, Mouse, Keyboard, Zap, Clock, Calendar, ShieldAlert, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -50,8 +49,6 @@ const RULES = [
   "Возврат средств только при технических проблемах клуба.",
   "Администрация вправе отказать в обслуживании при нарушении правил.",
 ];
-
-const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSfHdsuUMWR23eJ67OodYlVZEeIHionMo4K_PH-xsiS8w0XlDFd3TmeBi_9EkYuV5ujEVIN7k-AP8Vu/pub?gid=0&single=true&output=csv";
 
 const WHATSAPP_NUMBER = "77064052525";
 const WHATSAPP_MESSAGE = "Здравствуйте! Хочу забронировать место в Hyperion";
@@ -359,41 +356,12 @@ const BookingModal = ({
 };
 
 const Pricing = () => {
-  const [pricingData, setPricingData] = useState<PricingRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'Standard' | 'VIP' | 'Premium'>('Standard');
   const [activePeriod, setActivePeriod] = useState<'Mon-Thu' | 'Fri-Sun'>('Mon-Thu');
   const [selectedItem, setSelectedItem] = useState<PricingRow | null>(null);
 
-  useEffect(() => {
-    Papa.parse(GOOGLE_SHEET_URL, {
-      download: true,
-      header: true,
-      complete: (results) => {
-        // If sheet is empty or fails, we use fallback data
-        if (results.data && results.data.length > 0) {
-           // Basic validation to ensure it looks like our data
-           const hasRequiredKeys = 'Category' in results.data[0] && 'Price' in results.data[0];
-           if (hasRequiredKeys) {
-             setPricingData(results.data as PricingRow[]);
-           } else {
-             console.warn("CSV format mismatch, using fallback");
-             setPricingData(FALLBACK_PRICING);
-           }
-        } else {
-          setPricingData(FALLBACK_PRICING);
-        }
-        setLoading(false);
-      },
-      error: () => {
-        setPricingData(FALLBACK_PRICING);
-        setLoading(false);
-      }
-    });
-  }, []);
-
-  // Fallback data based on images
-  const FALLBACK_PRICING: PricingRow[] = [
+  // Hardcoded pricing data
+  const pricingData: PricingRow[] = [
     // Standard Mon-Thu
     { Category: 'Standard', Period: 'Mon-Thu', Item: '1 Час', Price: '1000' },
     { Category: 'Standard', Period: 'Mon-Thu', Item: '2+1', Price: '2000' },
@@ -430,8 +398,7 @@ const Pricing = () => {
     { Category: 'VIP', Period: 'Fri-Sun', Item: 'Ночь (22:00-08:00)', Price: '7700' },
     { Category: 'VIP', Period: 'Fri-Sun', Item: 'Ультра Ночь (01:00-10:00)', Price: '6600' },
     { Category: 'VIP', Period: 'Fri-Sun', Item: 'Полный День (08:00-18:00)', Price: '4000' },
-    // Premium Fri-Sun (Assuming similar structure, image 12 only shows one column, likely Fri-Sun or Mon-Thu? Let's assume Fri-Sun based on price hike or just general Premium)
-    // Actually Image 12 says "Juma - Jeksenbi" at the bottom.
+    // Premium Fri-Sun
     { Category: 'Premium', Period: 'Fri-Sun', Item: '1 Час', Price: '2900' },
     { Category: 'Premium', Period: 'Fri-Sun', Item: '2+1', Price: '5800' },
     { Category: 'Premium', Period: 'Fri-Sun', Item: '3+2', Price: '8000' },
@@ -440,9 +407,6 @@ const Pricing = () => {
     { Category: 'Premium', Period: 'Fri-Sun', Item: 'Ночь (22:00-08:00)', Price: '9800' },
     { Category: 'Premium', Period: 'Fri-Sun', Item: 'Ультра Ночь (01:00-10:00)', Price: '8000' },
     { Category: 'Premium', Period: 'Fri-Sun', Item: 'Полный День (08:00-18:00)', Price: '4800' },
-     // Premium Mon-Thu (Inferred or missing? I'll leave it empty or clone with discount if needed, but for now I'll just show what I have. If user clicks Mon-Thu for Premium, I might show "Нет данных" or just show Fri-Sun prices if that's all there is. Let's assume Premium is always high end. I'll just duplicate Fri-Sun for Mon-Thu with a slight discount for now to fill the UI, or better yet, just hide the toggle if data is missing. But to be safe, I'll add a placeholder or just use the same data if I don't have it.)
-     // Actually, let's just use the same data for Premium Mon-Thu but maybe 10% cheaper? No, better not to invent prices. I will only show what is in the images.
-     // Wait, I can just not render rows if they don't exist.
   ];
 
   const filteredData = pricingData.filter(row => 
@@ -509,30 +473,26 @@ const Pricing = () => {
 
         {/* Pricing Grid */}
         <div className="grid gap-4">
-          {loading ? (
-            <div className="text-center text-cyan-400">Загрузка цен...</div>
-          ) : (
-            filteredData.map((row, index) => (
-              <motion.div
-                key={index}
-                onClick={() => setSelectedItem(row)}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="flex items-center justify-between p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl hover:border-cyan-500 hover:bg-zinc-800/80 transition-all group cursor-pointer"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-zinc-800 rounded-lg text-cyan-400 group-hover:text-cyan-300 group-hover:bg-zinc-700 transition-colors">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <span className="text-gray-200 font-medium group-hover:text-white transition-colors">{row.Item}</span>
+          {filteredData.map((row, index) => (
+            <motion.div
+              key={index}
+              onClick={() => setSelectedItem(row)}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="flex items-center justify-between p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl hover:border-cyan-500 hover:bg-zinc-800/80 transition-all group cursor-pointer"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-zinc-800 rounded-lg text-cyan-400 group-hover:text-cyan-300 group-hover:bg-zinc-700 transition-colors">
+                  <Clock className="w-5 h-5" />
                 </div>
-                <div className="text-xl font-bold text-white font-mono group-hover:text-cyan-400 transition-colors">
-                  {row.Price} <span className="text-sm text-zinc-500 font-sans font-normal group-hover:text-cyan-600">₸</span>
-                </div>
-              </motion.div>
-            ))
-          )}
+                <span className="text-gray-200 font-medium group-hover:text-white transition-colors">{row.Item}</span>
+              </div>
+              <div className="text-xl font-bold text-white font-mono group-hover:text-cyan-400 transition-colors">
+                {row.Price} <span className="text-sm text-zinc-500 font-sans font-normal group-hover:text-cyan-600">₸</span>
+              </div>
+            </motion.div>
+          ))}
           {filteredData.length === 0 && (
              <div className="text-center text-zinc-500 py-10">Нет данных для выбранного периода</div>
           )}
